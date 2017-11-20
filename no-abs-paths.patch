@@ -1,0 +1,323 @@
+diff --git a/Library/Homebrew/brew.rb b/Library/Homebrew/brew.rb
+index f31224ab2..5789bb46a 100644
+--- a/Library/Homebrew/brew.rb
++++ b/Library/Homebrew/brew.rb
+@@ -114,7 +114,7 @@ begin
+     brew_uid = HOMEBREW_BREW_FILE.stat.uid
+     tap_commands = []
+     if Process.uid.zero? && !brew_uid.zero?
+-      tap_commands += %W[/usr/bin/sudo -u ##{brew_uid}]
++      tap_commands += %W[sudo -u ##{brew_uid}]
+     end
+     # Unset HOMEBREW_HELP to avoid confusing the tap
+     ENV.delete("HOMEBREW_HELP") if help_flag
+diff --git a/Library/Homebrew/brew.sh b/Library/Homebrew/brew.sh
+index 37fa7ed23..459aa654f 100644
+--- a/Library/Homebrew/brew.sh
++++ b/Library/Homebrew/brew.sh
+@@ -97,7 +97,7 @@ case "$HOMEBREW_SYSTEM" in
+   Linux)  HOMEBREW_LINUX="1" ;;
+ esac
+ 
+-HOMEBREW_CURL="/usr/bin/curl"
++HOMEBREW_CURL="curl"
+ if [[ -n "$HOMEBREW_MACOS" ]]
+ then
+   HOMEBREW_PROCESSOR="$(uname -p)"
+@@ -105,7 +105,7 @@ then
+   HOMEBREW_SYSTEM="Macintosh"
+   # This is i386 even on x86_64 machines
+   [[ "$HOMEBREW_PROCESSOR" = "i386" ]] && HOMEBREW_PROCESSOR="Intel"
+-  HOMEBREW_MACOS_VERSION="$(/usr/bin/sw_vers -productVersion)"
++  HOMEBREW_MACOS_VERSION="$(sw_vers -productVersion)"
+   HOMEBREW_OS_VERSION="macOS $HOMEBREW_MACOS_VERSION"
+   # Don't change this from Mac OS X to match what macOS itself does in Safari on 10.12
+   HOMEBREW_OS_USER_AGENT_VERSION="Mac OS X $HOMEBREW_MACOS_VERSION"
+@@ -168,9 +168,9 @@ export HOMEBREW_MACOS_VERSION
+ export HOMEBREW_USER_AGENT
+ export HOMEBREW_USER_AGENT_CURL
+ 
+-if [[ -n "$HOMEBREW_MACOS" && -x "/usr/bin/xcode-select" ]]
++if [[ -n "$HOMEBREW_MACOS" && -x "xcode-select" ]]
+ then
+-  XCODE_SELECT_PATH=$('/usr/bin/xcode-select' --print-path 2>/dev/null)
++  XCODE_SELECT_PATH=$('xcode-select' --print-path 2>/dev/null)
+   if [[ "$XCODE_SELECT_PATH" = "/" ]]
+   then
+     odie <<EOS
+@@ -187,7 +187,7 @@ EOS
+   # a popup window asking the user to install the CLT
+   if [[ -n "$XCODE_SELECT_PATH" ]]
+   then
+-    XCRUN_OUTPUT="$(/usr/bin/xcrun clang 2>&1)"
++    XCRUN_OUTPUT="$(xcrun clang 2>&1)"
+     XCRUN_STATUS="$?"
+ 
+     if [[ "$XCRUN_STATUS" -ne 0 && "$XCRUN_OUTPUT" = *license* ]]
+diff --git a/Library/Homebrew/cask/lib/hbc/artifact/abstract_uninstall.rb b/Library/Homebrew/cask/lib/hbc/artifact/abstract_uninstall.rb
+index 7505ac49a..a9aeb045e 100644
+--- a/Library/Homebrew/cask/lib/hbc/artifact/abstract_uninstall.rb
++++ b/Library/Homebrew/cask/lib/hbc/artifact/abstract_uninstall.rb
+@@ -112,7 +112,7 @@ module Hbc
+         bundle_ids.each do |bundle_id|
+           ohai "Quitting application ID #{bundle_id}"
+           next if running_processes(bundle_id, command: command).empty?
+-          command.run!("/usr/bin/osascript", args: ["-e", %Q(tell application id "#{bundle_id}" to quit)], sudo: true)
++          command.run!("osascript", args: ["-e", %Q(tell application id "#{bundle_id}" to quit)], sudo: true)
+ 
+           begin
+             Timeout.timeout(3) do
+@@ -152,7 +152,7 @@ module Hbc
+       def uninstall_login_item(*login_items, command: nil, **_)
+         login_items.each do |name|
+           ohai "Removing login item #{name}"
+-          command.run!("/usr/bin/osascript",
++          command.run!("osascript",
+                         args: ["-e", %Q(tell application "System Events" to delete every login item whose name is "#{name}")],
+                         sudo: false)
+           sleep 1
+@@ -163,14 +163,14 @@ module Hbc
+       def uninstall_kext(*kexts, command: nil, **_)
+         kexts.each do |kext|
+           ohai "Unloading kernel extension #{kext}"
+-          is_loaded = command.run!("/usr/sbin/kextstat", args: ["-l", "-b", kext], sudo: true).stdout
++          is_loaded = command.run!("kextstat", args: ["-l", "-b", kext], sudo: true).stdout
+           if is_loaded.length > 1
+-            command.run!("/sbin/kextunload", args: ["-b", kext], sudo: true)
++            command.run!("kextunload", args: ["-b", kext], sudo: true)
+             sleep 1
+           end
+-          command.run!("/usr/sbin/kextfind", args: ["-b", kext], sudo: true).stdout.chomp.lines.each do |kext_path|
++          command.run!("kextfind", args: ["-b", kext], sudo: true).stdout.chomp.lines.each do |kext_path|
+             ohai "Removing kernel extension #{kext_path}"
+-            command.run!("/bin/rm", args: ["-rf", kext_path], sudo: true)
++            command.run!("rm", args: ["-rf", kext_path], sudo: true)
+           end
+         end
+       end
+@@ -195,7 +195,7 @@ module Hbc
+           return
+         end
+ 
+-        command.run("/bin/chmod", args: ["--", "+x", executable_path])
++        command.run("chmod", args: ["--", "+x", executable_path])
+         command.run(executable_path, script_arguments)
+         sleep 1
+       end
+@@ -238,7 +238,7 @@ module Hbc
+         ohai "Removing files:"
+         each_resolved_path(:delete, paths) do |path, resolved_paths|
+           puts path
+-          command.run!("/usr/bin/xargs", args: ["-0", "--", "/bin/rm", "-r", "-f", "--"], input: resolved_paths.join("\0"), sudo: true)
++          command.run!("xargs", args: ["-0", "--", "rm", "-r", "-f", "--"], input: resolved_paths.join("\0"), sudo: true)
+         end
+       end
+ 
+@@ -253,7 +253,7 @@ module Hbc
+       end
+ 
+       def trash_paths(*paths, command: nil, **_)
+-        result = command.run!("/usr/bin/osascript", args: ["-e", <<~'EOS', *paths])
++        result = command.run!("osascript", args: ["-e", <<~'EOS', *paths])
+           on run argv
+             repeat with i from 1 to (count argv)
+               set item i of argv to (item i of argv as POSIX file)
+@@ -288,10 +288,10 @@ module Hbc
+           puts path
+           resolved_paths.select(&:directory?).each do |resolved_path|
+             if (ds_store = resolved_path.join(".DS_Store")).exist?
+-              command.run!("/bin/rm", args: ["-f", "--", ds_store], sudo: true, print_stderr: false)
++              command.run!("rm", args: ["-f", "--", ds_store], sudo: true, print_stderr: false)
+             end
+ 
+-            command.run("/bin/rmdir", args: ["--", resolved_path], sudo: true, print_stderr: false)
++            command.run("rmdir", args: ["--", resolved_path], sudo: true, print_stderr: false)
+           end
+         end
+       end
+diff --git a/Library/Homebrew/cask/lib/hbc/container/dmg.rb b/Library/Homebrew/cask/lib/hbc/container/dmg.rb
+index c0e43f68a..781fadb28 100644
+--- a/Library/Homebrew/cask/lib/hbc/container/dmg.rb
++++ b/Library/Homebrew/cask/lib/hbc/container/dmg.rb
+@@ -7,7 +7,7 @@ module Hbc
+   class Container
+     class Dmg < Base
+       def self.me?(criteria)
+-        !criteria.command.run("/usr/bin/hdiutil",
++        !criteria.command.run("hdiutil",
+                               # realpath is a failsafe against unusual filenames
+                               args:         ["imageinfo", Pathname.new(criteria.path).realpath],
+                               print_stderr: false).stdout.empty?
+@@ -31,7 +31,7 @@ module Hbc
+         Dir.mktmpdir do |unpack_dir|
+           cdr_path = Pathname.new(unpack_dir).join("#{path.basename(".dmg")}.cdr")
+ 
+-          without_eula = @command.run("/usr/bin/hdiutil",
++          without_eula = @command.run("hdiutil",
+                                  args:  ["attach", "-plist", "-nobrowse", "-readonly", "-noidme", "-mountrandom", unpack_dir, path],
+                                  input: "qn\n",
+                                  print_stderr: false)
+@@ -40,9 +40,9 @@ module Hbc
+           plist = if without_eula.success?
+             without_eula.plist
+           else
+-            @command.run!("/usr/bin/hdiutil", args: ["convert", "-quiet", "-format", "UDTO", "-o", cdr_path, path])
++            @command.run!("hdiutil", args: ["convert", "-quiet", "-format", "UDTO", "-o", cdr_path, path])
+ 
+-            with_eula = @command.run!("/usr/bin/hdiutil",
++            with_eula = @command.run!("hdiutil",
+                           args: ["attach", "-plist", "-nobrowse", "-readonly", "-noidme", "-mountrandom", unpack_dir, cdr_path])
+ 
+             if verbose? && !(eula_text = without_eula.stdout).empty?
+@@ -65,11 +65,11 @@ module Hbc
+         begin
+           tries ||= 3
+           if tries > 1
+-            @command.run("/usr/sbin/diskutil",
++            @command.run("diskutil",
+                          args:         ["eject", mountpath],
+                          print_stderr: false)
+           else
+-            @command.run("/usr/sbin/diskutil",
++            @command.run("diskutil",
+                          args:         ["unmount", "force", mountpath],
+                          print_stderr: false)
+           end
+@@ -91,8 +91,8 @@ module Hbc
+             filelist.puts(bom_filelist_from_path(mount))
+             filelist.close
+ 
+-            @command.run!("/usr/bin/mkbom", args: ["-s", "-i", filelist.path, "--", bomfile.path])
+-            @command.run!("/usr/bin/ditto", args: ["--bom", bomfile.path, "--", mount, @cask.staged_path])
++            @command.run!("mkbom", args: ["-s", "-i", filelist.path, "--", bomfile.path])
++            @command.run!("ditto", args: ["--bom", bomfile.path, "--", mount, @cask.staged_path])
+           end
+         end
+       end
+@@ -100,7 +100,7 @@ module Hbc
+       def bom_filelist_from_path(mount)
+         # We need to use `find` here instead of Ruby in order to properly handle
+         # file names containing special characters, such as “e” + “´” vs. “é”.
+-        @command.run("/usr/bin/find", args: [".", "-print0"], chdir: mount, print_stderr: false).stdout
++        @command.run("find", args: [".", "-print0"], chdir: mount, print_stderr: false).stdout
+                 .split("\0")
+                 .reject { |path| skip_path?(mount, path) }
+                 .join("\n")
+diff --git a/Library/Homebrew/download_strategy.rb b/Library/Homebrew/download_strategy.rb
+index f9a359450..f8fc7857d 100644
+--- a/Library/Homebrew/download_strategy.rb
++++ b/Library/Homebrew/download_strategy.rb
+@@ -98,7 +98,6 @@ class AbstractDownloadStrategy
+ 
+   def cvspath
+     @cvspath ||= %W[
+-      /usr/bin/cvs
+       #{HOMEBREW_PREFIX}/bin/cvs
+       #{HOMEBREW_PREFIX}/opt/cvs/bin/cvs
+       #{which("cvs")}
+@@ -247,7 +246,7 @@ class AbstractFileDownloadStrategy < AbstractDownloadStrategy
+     when :lha
+       safe_system lhapath, "x", cached_location
+     when :xar
+-      safe_system "/usr/bin/xar", "-xf", cached_location
++      safe_system "xar", "-xf", cached_location
+     when :rar
+       quiet_safe_system "unrar", "x", "-inul", cached_location
+     when :p7zip
+diff --git a/Library/Homebrew/extend/pathname.rb b/Library/Homebrew/extend/pathname.rb
+index 07919f8a0..47015e8a5 100644
+--- a/Library/Homebrew/extend/pathname.rb
++++ b/Library/Homebrew/extend/pathname.rb
+@@ -388,12 +388,12 @@ class Pathname
+ 
+   # @private
+   def install_info
+-    quiet_system "/usr/bin/install-info", "--quiet", to_s, "#{dirname}/dir"
++    quiet_system "install-info", "--quiet", to_s, "#{dirname}/dir"
+   end
+ 
+   # @private
+   def uninstall_info
+-    quiet_system "/usr/bin/install-info", "--delete", "--quiet", to_s, "#{dirname}/dir"
++    quiet_system "install-info", "--delete", "--quiet", to_s, "#{dirname}/dir"
+   end
+ 
+   # Writes an exec script in this folder for each target pathname
+diff --git a/Library/Homebrew/keg_relocate.rb b/Library/Homebrew/keg_relocate.rb
+index 71773db81..4591851bc 100644
+--- a/Library/Homebrew/keg_relocate.rb
++++ b/Library/Homebrew/keg_relocate.rb
+@@ -96,7 +96,7 @@ class Keg
+   alias generic_recursive_fgrep_args recursive_fgrep_args
+ 
+   def each_unique_file_matching(string)
+-    Utils.popen_read("/usr/bin/fgrep", recursive_fgrep_args, string, to_s) do |io|
++    Utils.popen_read("fgrep", recursive_fgrep_args, string, to_s) do |io|
+       hardlinks = Set.new
+ 
+       until io.eof?
+@@ -113,7 +113,7 @@ class Keg
+ 
+   def text_files
+     text_files = []
+-    return text_files unless File.exist?("/usr/bin/file")
++    return text_files unless File.exist?("file")
+ 
+     # file has known issues with reading files on other locales. Has
+     # been fixed upstream for some time, but a sufficiently new enough
+@@ -132,7 +132,7 @@ class Keg
+         end
+         false
+       }
+-      output, _status = Open3.capture2("/usr/bin/xargs -0 /usr/bin/file --no-dereference --print0",
++      output, _status = Open3.capture2("xargs -0 file --no-dereference --print0",
+                                        stdin_data: files.to_a.join("\0"))
+       # `file` output sometimes contains data from the file, which may include
+       # invalid UTF-8 entities, so tell Ruby this is just a bytestring
+diff --git a/Library/Homebrew/os.rb b/Library/Homebrew/os.rb
+index d35a49dd7..275f4f22d 100644
+--- a/Library/Homebrew/os.rb
++++ b/Library/Homebrew/os.rb
+@@ -19,7 +19,7 @@ module OS
+     if !OS::Mac.prerelease? && !OS::Mac.outdated_release?
+       ISSUES_URL = "https://docs.brew.sh/Troubleshooting.html".freeze
+     end
+-    PATH_OPEN = "/usr/bin/open".freeze
++    PATH_OPEN = "open".freeze
+   elsif OS.linux?
+     ISSUES_URL = "https://github.com/Linuxbrew/brew/wiki/troubleshooting".freeze
+     PATH_OPEN = "xdg-open".freeze
+diff --git a/Library/Homebrew/os/mac.rb b/Library/Homebrew/os/mac.rb
+index ade801c42..8862578cd 100644
+--- a/Library/Homebrew/os/mac.rb
++++ b/Library/Homebrew/os/mac.rb
+@@ -58,7 +58,6 @@ module OS
+       @languages ||= [
+         *ARGV.value("language")&.split(","),
+         *ENV["HOMEBREW_LANGUAGES"]&.split(","),
+-        *Open3.capture2("defaults", "read", "-g", "AppleLanguages")[0].scan(/[^ \n"(),]+/),
+       ].uniq
+     end
+ 
+@@ -67,7 +66,7 @@ module OS
+     end
+ 
+     def active_developer_dir
+-      @active_developer_dir ||= Utils.popen_read("/usr/bin/xcode-select", "-print-path").strip
++      @active_developer_dir ||= Utils.popen_read("xcode-select", "-print-path").strip
+     end
+ 
+     # If a specific SDK is requested
+diff --git a/Library/Homebrew/sandbox.rb b/Library/Homebrew/sandbox.rb
+index ea74fae09..1efddee0c 100644
+--- a/Library/Homebrew/sandbox.rb
++++ b/Library/Homebrew/sandbox.rb
+@@ -2,7 +2,7 @@ require "erb"
+ require "tempfile"
+ 
+ class Sandbox
+-  SANDBOX_EXEC = "/usr/bin/sandbox-exec".freeze
++  SANDBOX_EXEC = "sandbox-exec".freeze
+ 
+   def self.available?
+     OS.mac? && OS::Mac.version >= "10.6" && File.executable?(SANDBOX_EXEC)
