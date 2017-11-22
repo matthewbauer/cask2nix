@@ -1,6 +1,8 @@
 { fetchFromGitHub, runCommand, jq, buildCask, lib }:
 
 let
+
+  # ideally this could update automatically
   homebrew-cask = fetchFromGitHub {
     owner = "caskroom";
     repo = "homebrew-cask";
@@ -14,6 +16,9 @@ let
     ls ${homebrew-cask}/Casks | jq -R '[.]' | jq -s -c 'add' > $out
   '';
 in
+
+  # generate list of Homebrew Cask formulas from files in the GitHub repo
+
   builtins.listToAttrs (map
     (path: rec {
       name = (lib.removeSuffix ".rb" path);

@@ -53,10 +53,15 @@ let
   '')));
 in
 
+# build NAME from the list of CASKS
+
 stdenv.mkDerivation {
-  inherit name;
-  # name = "${name}-${cask-info.version}";
+  inherit name; # NOTE: name shouldn’t be an attribute of cask-info because it
+                # takes to long to generate and name is needed by nix-env -qa
+
   buildInputs = [ undmg unzip ];
+
+  phases = [ "unpackPhase" "installPhase" ];
 
   src = if cask-info.sha256 == "no_check" then
     builtins.fetchurl cask-info.url
@@ -65,6 +70,7 @@ stdenv.mkDerivation {
     name = baseNameOf (builtins.replaceStrings ["%20"] ["_"] url);
   };
 
+  # avoid auto cd into .app dir
   sourceRoot = ".";
 
   installPhase = ''
