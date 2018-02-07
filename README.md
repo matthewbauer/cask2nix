@@ -8,7 +8,7 @@ I'm trying to cheat a little by using another package manager's packages. Homebr
 
 cask2nix will build a Homebrew Cask formula from within Nix. This means you can use a Homebrew Cask formula like any other derivation in Nix. Things like installing, removing, and more become possible. We can even create a package set from the default Homebrew Casks.
 
-This project contain 0% generated files— everything is generated automatically. Basically, it will download the Homebrew Casks formula repo and create an index for each file in that repo. When building, it pulls in Homebrew, then evaluates the Cask in Ruby and generates a JSON file that is readable by Nix.
+This project contain 0% generated files—everything is generated automatically. Basically, it will download the Homebrew Casks formula repo and create an index for each file in that repo. When building, it pulls in Homebrew, then evaluates the Cask in Ruby and generates a JSON file that is readable by Nix.
 
 This project is mostly an experiment in building packages directly from another package manager. Because we’re just using another package manager’s data, not every package is going to work. Please file an issue if you find a bug in your project. I’ll try to support it as much as I can but be warned it’s very experimental.
 
